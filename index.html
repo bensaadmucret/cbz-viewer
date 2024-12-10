@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBZ Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #1c1c1c;
+      color: white;
+    }
+    #viewer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 80vh;
+      width: 100%;
+    }
+    #viewer img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 10px;
+    }
+    button {
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #333;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>CBZ Viewer</h1>
+  <input type="file" id="fileInput" accept=".cbz" />
+  <div id="viewer">
+    <img id="currentImage" alt="No image loaded" />
+  </div>
+  <div class="controls">
+    <button id="prevButton" disabled>Previous</button>
+    <button id="fullscreenButton">Fullscreen</button>
+    <button id="nextButton" disabled>Next</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip/dist/jszip.min.js"></script>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const currentImage = document.getElementById('currentImage');
+    const prevButton = document.getElementById('prevButton');
+    const nextButton = document.getElementById('nextButton');
+    const fullscreenButton = document.getElementById('fullscreenButton');
+
+    let images = [];
+    let currentIndex = 0;
+
+    fileInput.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const zip = new JSZip();
+        const content = await zip.loadAsync(file);
+        images = Object.keys(content.files)
+          .filter((name) => name.match(/\.(jpe?g|png|gif)$/i))
+          .sort();
+
+        if (images.length > 0) {
+          currentIndex = 0;
+          loadImage();
+          updateButtons();
+        } else {
+          alert('No images found in the CBZ file.');
+        }
+      }
+    });
+
+    function loadImage() {
+      const zip = new JSZip();
+      const file = fileInput.files[0];
+      zip.loadAsync(file).then((content) => {
+        const imagePath = images[currentIndex];
+        content.files[imagePath].async('blob').then((blob) => {
+          currentImage.src = URL.createObjectURL(blob);
+        });
+      });
+    }
+
+    function updateButtons() {
+      prevButton.disabled = currentIndex === 0;
+      nextButton.disabled = currentIndex === images.length - 1;
+    }
+
+    prevButton.addEventListener('click', () => {
+      if (currentIndex > 0) {
+        currentIndex--;
+        loadImage();
+        updateButtons();
+      }
+    });
+
+    nextButton.addEventListener('click', () => {
+      if (currentIndex < images.length - 1) {
+        currentIndex++;
+        loadImage();
+        updateButtons();
+      }
+    });
+
+    fullscreenButton.addEventListener('click', () => {
+      const viewer = document.getElementById('viewer');
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        viewer.requestFullscreen();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (document.fullscreenElement) {
+        if (event.key === 'ArrowLeft' && currentIndex > 0) {
+          currentIndex--;
+          loadImage();
+          updateButtons();
+        } else if (event.key === 'ArrowRight' && currentIndex < images.length - 1) {
+          currentIndex++;
+          loadImage();
+          updateButtons();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
